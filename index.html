@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KAON Product Quiz</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --orange: #F47920;
+    --dark: #141414;
+    --card: #1E1E1E;
+    --card2: #252525;
+    --light: #F0EFE9;
+    --gray: #666;
+    --border: #2C2C2C;
+    --correct: #27AE60;
+    --wrong: #C0392B;
+    --correct-bg: rgba(39,174,96,0.1);
+    --wrong-bg: rgba(192,57,43,0.1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:'Noto Sans KR',sans-serif;
+    background:var(--dark);
+    color:var(--light);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  body::after {
+    content:'';
+    position:fixed;inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events:none;z-index:999;
+  }
+  .screen { display:none; }
+  .screen.active { display:flex; }
+
+  /* ── LANDING ── */
+  #landing {
+    min-height:100vh;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:48px 24px;
+    text-align:center;
+  }
+  .hero-logo {
+    font-family:'DM Sans',sans-serif;
+    font-size:clamp(60px,11vw,100px);
+    font-weight:800;
+    letter-spacing:-4px;
+    line-height:.9;
+  }
+  .hero-logo span { color:var(--orange); }
+  .hero-sub {
+    font-family:'DM Sans',sans-serif;
+    font-size:clamp(14px,2.5vw,20px);
+    font-weight:600;
+    color:var(--gray);
+    letter-spacing:8px;
+    text-transform:uppercase;
+    margin:12px 0 64px;
+  }
+  .cat-wrap {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    max-width:560px;
+    width:100%;
+    margin-bottom:18px;
+  }
+  .cat-btn {
+    background:var(--card);
+    border:1.5px solid var(--border);
+    border-radius:20px;
+    padding:30px 20px 26px;
+    cursor:pointer;
+    transition:all .28s cubic-bezier(.22,.68,0,1.2);
+    text-align:left;
+    position:relative;
+    overflow:hidden;
+    color:var(--light);
+  }
+  .cat-btn::after {
+    content:'';
+    position:absolute;bottom:0;left:0;right:0;
+    height:3px;background:var(--orange);
+    transform:scaleX(0);transform-origin:left;
+    transition:transform .3s ease;
+  }
+  .cat-btn:hover { border-color:var(--orange);transform:translateY(-5px);box-shadow:0 20px 40px rgba(244,121,32,.12); }
+  .cat-btn:hover::after { transform:scaleX(1); }
+  .cat-icon { font-size:30px;margin-bottom:12px;display:block; }
+  .cat-title { font-family:'DM Sans',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px; }
+  .cat-desc { font-size:12px;color:var(--gray);line-height:1.7; }
+  .cat-pill {
+    display:inline-block;margin-top:12px;
+    background:rgba(244,121,32,.12);color:var(--orange);
+    font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;
+  }
+  .full-btn {
+    max-width:560px;width:100%;
+    background:var(--orange);color:#fff;border:none;border-radius:50px;
+    padding:17px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;
+    letter-spacing:.5px;cursor:pointer;transition:all .2s;
+  }
+  .full-btn:hover { background:#d96a15;transform:scale(1.02); }
+
+  /* ── QUIZ ── */
+  #quiz { min-height:100vh;flex-direction:column; }
+  .qz-top {
+    position:sticky;top:0;z-index:10;
+    background:rgba(20,20,20,.93);
+    backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--border);
+  }
+  .qz-nav {
+    display:flex;align-items:center;justify-content:space-between;
+    padding:17px 28px;
+  }
+  .qz-back {
+    font-size:13px;color:var(--gray);cursor:pointer;
+    display:flex;align-items:center;gap:5px;
+    transition:color .2s;background:none;border:none;
+    font-family:'Noto Sans KR',sans-serif;
+  }
+  .qz-back:hover { color:var(--orange); }
+  .qz-badge {
+    font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;
+    background:rgba(244,121,32,.12);color:var(--orange);
+    padding:5px 14px;border-radius:20px;
+  }
+  .qz-score { font-size:13px;color:var(--gray); }
+  .qz-score b { color:var(--orange); }
+  .prog-bar { height:2px;background:var(--border); }
+  .prog-fill { height:100%;background:var(--orange);transition:width .5s ease; }
+
+  .qz-body {
+    flex:1;display:flex;flex-direction:column;
+    align-items:center;padding:44px 24px 80px;
+  }
+  .qz-inner { max-width:660px;width:100%; }
+  .qz-meta { display:flex;align-items:center;gap:10px;margin-bottom:22px; }
+  .qz-num { font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--gray); }
+  .easy-badge { display:none; }
+  .qz-q {
+    font-family:'DM Sans',sans-serif;
+    font-size:clamp(17px,2.8vw,23px);font-weight:700;
+    line-height:1.5;margin-bottom:10px;
+  }
+  .qz-tip {
+    font-size:12.5px;color:var(--gray);line-height:1.7;
+    padding:10px 14px;border-left:2px solid var(--border);
+    margin-bottom:28px;
+  }
+
+  /* choices */
+  .choices { display:flex;flex-direction:column;gap:10px; }
+  .choice {
+    display:flex;align-items:center;gap:14px;
+    background:var(--card2);border:1.5px solid var(--border);
+    border-radius:14px;padding:16px 20px;
+    cursor:pointer;transition:all .2s;
+    text-align:left;width:100%;
+    color:var(--light);
+    font-family:'Noto Sans KR',sans-serif;
+    font-size:14.5px;line-height:1.55;
+  }
+  .choice:hover:not([disabled]) {
+    border-color:var(--orange);
+    background:rgba(244,121,32,.06);
+    transform:translateX(4px);
+  }
+  .choice[disabled] { cursor:default; }
+  .ch-label {
+    flex-shrink:0;width:30px;height:30px;border-radius:50%;
+    background:rgba(255,255,255,.05);border:1.5px solid var(--border);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;
+    transition:all .2s;
+  }
+  /* states */
+  .choice.correct-pick { border-color:var(--correct);background:var(--correct-bg); }
+  .choice.correct-pick .ch-label { background:var(--correct);border-color:var(--correct);color:#fff; }
+  .choice.wrong-pick { border-color:var(--wrong);background:var(--wrong-bg); }
+  .choice.wrong-pick .ch-label { background:var(--wrong);border-color:var(--wrong);color:#fff; }
+  .choice.show-correct { border-color:var(--correct);background:rgba(39,174,96,.06);opacity:.75; }
+  .choice.show-correct .ch-label { background:var(--correct);border-color:var(--correct);color:#fff; }
+
+  .qz-feedback {
+    margin-top:18px;padding:16px 20px;border-radius:14px;
+    font-size:13.5px;line-height:1.8;
+    display:none;animation:popIn .3s ease;
+  }
+  .qz-feedback.correct { background:var(--correct-bg);border:1px solid rgba(39,174,96,.25);color:#5ddb8c; }
+  .qz-feedback.wrong   { background:var(--wrong-bg);border:1px solid rgba(192,57,43,.25);color:#f08070; }
+
+  .qz-next {
+    display:none;margin-top:22px;
+    background:var(--orange);color:#fff;border:none;
+    border-radius:50px;padding:13px 36px;
+    font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;
+    cursor:pointer;letter-spacing:.5px;transition:all .2s;
+    align-self:flex-end;
+  }
+  .qz-next:hover { background:#d96a15; }
+  .choices-wrap { display:flex;flex-direction:column;gap:0; }
+
+  /* ── RESULT ── */
+  #result {
+    min-height:100vh;flex-direction:column;
+    align-items:center;justify-content:center;
+    padding:48px 24px;text-align:center;
+  }
+  .res-emoji { font-size:72px;margin-bottom:18px;animation:bounce .6s ease; }
+  .res-title {
+    font-family:'DM Sans',sans-serif;
+    font-size:clamp(24px,5vw,42px);font-weight:800;margin-bottom:8px;
+  }
+  .res-title span { color:var(--orange); }
+  .res-sub { font-size:15px;color:var(--gray);margin-bottom:44px; }
+  .score-circle {
+    width:150px;height:150px;border-radius:50%;
+    border:6px solid var(--border);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    margin:0 auto 44px;position:relative;
+  }
+  .score-circle::before {
+    content:'';position:absolute;inset:-6px;border-radius:50%;
+    border:6px solid transparent;
+    border-top-color:var(--orange);border-right-color:var(--orange);
+  }
+  .sc-big { font-family:'DM Sans',sans-serif;font-size:52px;font-weight:800;color:var(--orange);line-height:1; }
+  .sc-of  { font-size:13px;color:var(--gray); }
+  .res-list { max-width:600px;width:100%;margin-bottom:40px;text-align:left; }
+  .res-item {
+    display:flex;gap:12px;align-items:flex-start;
+    background:var(--card);border-radius:12px;
+    padding:14px 16px;margin-bottom:8px;
+    border-left:3px solid transparent;
+    font-size:13px;line-height:1.6;
+  }
+  .res-item.ok { border-left-color:var(--correct); }
+  .res-item.no { border-left-color:var(--wrong); }
+  .res-mark { font-size:15px;flex-shrink:0;margin-top:1px; }
+  .res-q    { color:var(--gray);font-size:12px;margin-bottom:3px; }
+  .res-pick { color:var(--light); }
+  .res-ans  { color:#5ddb8c;font-size:12px;margin-top:2px; }
+  .res-btns { display:flex;gap:14px;flex-wrap:wrap;justify-content:center; }
+  .btn-retry {
+    background:var(--orange);color:#fff;border:none;border-radius:50px;
+    padding:14px 40px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;
+    cursor:pointer;transition:all .2s;
+  }
+  .btn-retry:hover { background:#d96a15; }
+  .btn-home {
+    background:transparent;color:var(--gray);
+    border:1.5px solid var(--border);border-radius:50px;
+    padding:14px 40px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;
+    cursor:pointer;transition:all .2s;
+  }
+  .btn-home:hover { border-color:var(--light);color:var(--light); }
+
+  @keyframes popIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 40%{transform:translateY(-14px)} 70%{transform:translateY(-5px)} }
+  .fade-in { animation:popIn .35s ease both; }
+
+  @media(max-width:480px){
+    .cat-wrap{grid-template-columns:1fr;}
+    .qz-nav{padding:14px 16px;}
+    .qz-body{padding:28px 16px 60px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ LANDING ══ -->
+<div id="landing" class="screen active">
+  <div class="hero-logo">KA<span>O</span>N</div>
+  <div class="hero-sub">Product Quiz</div>
+
+  <div class="cat-wrap">
+    <button class="cat-btn" onclick="startQuiz('video')">
+      <span class="cat-icon">📺</span>
+      <div class="cat-title">Video / OTT</div>
+      <div class="cat-desc">STB, Android TV,<br>AI 서비스, OTT 개념</div>
+      <span class="cat-pill">5문제</span>
+    </button>
+    <button class="cat-btn" onclick="startQuiz('broadband')">
+      <span class="cat-icon">📡</span>
+      <div class="cat-title">Broadband / CPE</div>
+      <div class="cat-desc">Wi-Fi, Mesh, PON,<br>FWA, Managed Wi-Fi</div>
+      <span class="cat-pill">5문제</span>
+    </button>
+  </div>
+  <button class="full-btn" onclick="startQuiz('all')">🎯 전체 통합 도전 (10문제)</button>
+</div>
+
+<!-- ══ QUIZ ══ -->
+<div id="quiz" class="screen">
+  <div class="qz-top">
+    <div class="qz-nav">
+      <button class="qz-back" onclick="goHome()">← 처음으로</button>
+      <div class="qz-badge" id="qz-badge"></div>
+      <div class="qz-score">정답 <b id="qz-score">0</b></div>
+    </div>
+    <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+
+  <div class="qz-body">
+    <div class="qz-inner fade-in" id="qz-inner">
+      <div class="qz-meta">
+        <span class="qz-num" id="qz-num"></span>
+      </div>
+      <div class="qz-q" id="qz-q"></div>
+      <div class="qz-tip" id="qz-tip"></div>
+      <div class="choices" id="choices"></div>
+      <div class="qz-feedback" id="qz-feedback"></div>
+      <button class="qz-next" id="qz-next" onclick="nextQ()"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESULT ══ -->
+<div id="result" class="screen">
+  <div class="res-emoji" id="res-emoji"></div>
+  <div class="res-title" id="res-title"></div>
+  <div class="res-sub" id="res-sub"></div>
+  <div class="score-circle">
+    <div class="sc-big" id="sc-big"></div>
+    <div class="sc-of"  id="sc-of"></div>
+  </div>
+  <div class="res-list" id="res-list"></div>
+  <div class="res-btns">
+    <button class="btn-retry" onclick="retry()">다시 도전 🔄</button>
+    <button class="btn-home"  onclick="goHome()">홈으로</button>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────
+const QUIZZES = {
+  video: [
+    {
+      q: "STB(셋톱박스)가 하는 역할로 가장 올바른 것은?",
+      tip: "우리 집 TV 옆에 놓인 작은 박스를 떠올려 보세요.",
+      choices: [
+        "인터넷 신호를 증폭시켜 Wi-Fi를 더 멀리 보낸다",
+        "방송·OTT 콘텐츠를 TV 화면으로 볼 수 있게 해주는 장치다",
+        "스마트폰을 TV에 무선으로 미러링하는 장치다",
+        "TV 전원을 켜고 끄는 스마트 리모컨이다"
+      ],
+      answer: 1,
+      explanation: "STB(Set-Top Box)는 케이블·위성·IP 방송 신호와 Netflix·YouTube 같은 OTT 서비스를 TV에서 볼 수 있도록 신호를 변환해주는 장치입니다. KAON은 이 STB를 전 세계 통신사에 공급하고 있습니다."
+    },
+    {
+      q: "OTT 서비스의 특징으로 가장 올바른 것은? (예: Netflix, YouTube)",
+      tip: "OTT = Over-The-Top. 케이블이나 위성 안테나 없이 어떻게 볼 수 있을까요?",
+      choices: [
+        "케이블이나 위성 안테나가 반드시 있어야 시청할 수 있다",
+        "TV에 내장된 소프트웨어로만 작동한다",
+        "인터넷 연결만 있으면 언제 어디서든 영상을 시청할 수 있다",
+        "오직 스마트폰에서만 시청 가능하다"
+      ],
+      answer: 2,
+      explanation: "OTT(Over-The-Top)는 인터넷 연결만 있으면 별도의 케이블·위성 설비 없이 어디서든 영상을 볼 수 있는 스트리밍 서비스입니다. KAON STB는 Netflix, YouTube, Disney+, Amazon Prime Video 등 주요 OTT를 모두 지원합니다."
+    },
+    {
+      q: "Android TV STB와 Linux(Benjamin) STB의 가장 큰 차이점은?",
+      tip: "하나는 구글이 만든 OS, 다른 하나는 오픈소스 OS를 씁니다.",
+      choices: [
+        "Android TV는 화질이 더 좋고, Linux는 음질이 더 좋다",
+        "Android TV는 구글 OS 기반으로 앱 설치가 쉽고, Linux는 통신사가 UI를 자유롭게 커스터마이징할 수 있다",
+        "Android TV는 해외 전용, Linux는 국내 전용 제품이다",
+        "둘 다 완전히 동일하며 가격만 다르다"
+      ],
+      answer: 1,
+      explanation: "Android TV STB는 구글의 공식 앱스토어를 통해 앱을 쉽게 설치할 수 있습니다. Linux(Benjamin) STB는 오픈소스 기반으로 통신사가 자사 브랜드와 서비스에 맞게 UI·UX를 자유롭게 설계할 수 있어 유연성이 높습니다."
+    },
+    {
+      q: "KAON의 'AI PIP' 기능은 어떤 상황에서 동작하나요?",
+      tip: "PIP = Picture in Picture. 화면 속 또 다른 작은 화면이 등장하는 기능입니다.",
+      choices: [
+        "TV를 끈 상태에서도 뉴스를 자동으로 녹화한다",
+        "영화를 보는 중 다른 채널에서 주요 이벤트(예: 축구 골)가 생기면 작은 창으로 알려준다",
+        "인터넷 속도가 느려질 때 화질을 자동으로 낮춰준다",
+        "리모컨 배터리가 부족하면 화면에 경고를 띄운다"
+      ],
+      answer: 1,
+      explanation: "AI PIP(Picture-in-Picture)는 영화를 보는 중에 시청자가 관심 있는 다른 채널에서 중요한 이벤트(축구 골 등)가 발생하면 AI가 자동 감지해 화면 한쪽에 작은 창으로 알려줍니다. 원할 경우 바로 해당 채널로 전환도 가능합니다."
+    },
+    {
+      q: "KAON의 'AI Self-Help' 기능을 도입하면 통신사(오퍼레이터)에게 가장 직접적인 이득은?",
+      tip: "고객이 STB 오류를 스스로 해결할 수 있다면, 통신사 입장에서 무엇이 줄어들까요?",
+      choices: [
+        "STB 하드웨어를 더 저렴하게 생산할 수 있다",
+        "새로운 채널을 더 많이 추가할 수 있다",
+        "고객센터 문의 및 현장 방문 A/S 비용이 줄어든다",
+        "OTT 서비스 구독료를 할인받을 수 있다"
+      ],
+      answer: 2,
+      explanation: "AI Self-Help는 HDMI 오류·인터넷 연결 불량·리모컨 페어링 등 흔한 문제를 고객이 음성·텍스트·이미지 안내로 스스로 해결하게 도와줍니다. 이를 통해 통신사의 고객센터 콜과 A/S 출동 비용이 약 20% 감소할 것으로 기대됩니다."
+    }
+  ],
+
+  broadband: [
+    {
+      q: "AP(Access Point) 라우터와 PON 게이트웨이의 역할 차이로 올바른 것은?",
+      tip: "인터넷이 집에 들어오는 '입구'와, 집 안에 Wi-Fi를 '뿌려주는' 장치를 구분해보세요.",
+      choices: [
+        "둘 다 동일하게 Wi-Fi 신호를 강하게 만들어주는 장치다",
+        "AP는 유선 인터넷을 Wi-Fi로 변환해 집 안에 뿌려주고, PON은 광통신망 신호를 가정용 인터넷으로 변환하는 입구 역할이다",
+        "AP는 통신사가 설치하고, PON은 사용자가 직접 구매한다",
+        "PON은 무선 기기이고, AP는 반드시 유선 케이블에만 연결된다"
+      ],
+      answer: 1,
+      explanation: "AP(Access Point)는 유선 인터넷을 무선 Wi-Fi 신호로 변환해 집 안에 뿌려주는 장치입니다. PON(Passive Optical Network) 게이트웨이는 통신사의 광케이블 신호를 가정에서 쓸 수 있는 인터넷 신호로 변환하는 '입구' 역할을 합니다. KAON은 두 제품군을 모두 공급합니다."
+    },
+    {
+      q: "Mesh Wi-Fi가 일반 공유기보다 유리한 상황은 언제인가요?",
+      tip: "2층짜리 넓은 집에서 거실은 Wi-Fi가 잘 되는데 안방은 신호가 약하다면?",
+      choices: [
+        "인터넷 속도 자체를 높이고 싶을 때",
+        "스마트폰 배터리를 아끼고 싶을 때",
+        "집이 넓거나 층수가 많아 Wi-Fi 신호가 닿지 않는 구역을 없애고 싶을 때",
+        "보안 카메라를 처음 설치하고 싶을 때"
+      ],
+      answer: 2,
+      explanation: "일반 공유기 1대는 거리가 멀어지면 신호가 약해집니다. Mesh Wi-Fi는 여러 대의 노드(장치)가 서로 연결되어 집 전체를 하나의 네트워크로 커버합니다. KAON의 AR 시리즈(Mesh)가 이 용도로 설계된 제품군입니다."
+    },
+    {
+      q: "FWA(Fixed Wireless Access)란 무엇인가요?",
+      tip: "광케이블을 땅에 묻기 어려운 지역에서 어떻게 인터넷을 제공할 수 있을까요?",
+      choices: [
+        "집 내부 벽에 설치하는 유선 인터넷 단자",
+        "광케이블 대신 5G·LTE 무선망을 이용해 가정에 인터넷을 제공하는 방식",
+        "여러 공유기를 하나로 묶어 속도를 높이는 기술",
+        "스마트폰 핫스팟을 가정용 인터넷으로 변환하는 앱"
+      ],
+      answer: 1,
+      explanation: "FWA(Fixed Wireless Access)는 광케이블 공사 없이 5G·LTE 무선망으로 가정에 인터넷을 제공하는 방식입니다. 케이블 인프라가 부족한 농어촌이나 신흥 지역에 빠르게 인터넷을 보급할 수 있습니다. KAON의 FA 시리즈(FA7150, FA7550 등)가 이 제품군입니다."
+    },
+    {
+      q: "Wi-Fi 세대(6 → 7 → 8)가 올라갈수록 개선되는 점은?",
+      tip: "새 스마트폰이 이전 세대보다 빠르고 안정적인 것처럼, Wi-Fi도 세대가 올라가면 어떤 점이 좋아질까요?",
+      choices: [
+        "Wi-Fi 신호 색깔이 바뀌어 구별하기 쉬워진다",
+        "제품 크기가 점점 작아져 설치 공간이 줄어든다",
+        "최대 전송 속도가 빨라지고, 더 많은 기기를 동시에 안정적으로 연결할 수 있다",
+        "전력 소비가 늘어나는 대신 신호 범위만 넓어진다"
+      ],
+      answer: 2,
+      explanation: "Wi-Fi 세대가 올라갈수록 ①최대 전송 속도 증가, ②동시 연결 기기 수 증가, ③지연 시간(latency) 감소가 이루어집니다. KAON은 Wi-Fi 6부터 Wi-Fi 8까지 전 세대 제품 라인업을 보유하고 있습니다."
+    },
+    {
+      q: "통신사가 'Managed Wi-Fi' 솔루션을 도입할 때 가장 큰 이점은?",
+      tip: "통신사가 가입자 집의 Wi-Fi 상태를 원격으로 볼 수 있다면 무엇이 달라질까요?",
+      choices: [
+        "가입자가 매달 더 빠른 요금제로 자동 업그레이드된다",
+        "통신사가 가입자 Wi-Fi 품질을 원격으로 모니터링·최적화해 A/S 비용과 고객 불만을 줄일 수 있다",
+        "Wi-Fi 비밀번호를 통신사가 매달 자동으로 바꿔준다",
+        "가입자가 직접 공유기를 교체하지 않아도 자동으로 신모델로 업그레이드된다"
+      ],
+      answer: 1,
+      explanation: "Managed Wi-Fi는 통신사가 가입자 가정의 Wi-Fi 품질을 원격으로 모니터링하고 최적화해주는 솔루션입니다. 고객이 직접 설정을 몰라도 되고, 통신사는 현장 A/S 방문을 줄여 운영 비용(OPEX)을 절감할 수 있습니다. KAON은 Plume, Airties 등과 협력해 이 솔루션을 제공합니다."
+    }
+  ]
+};
+QUIZZES.all = [...QUIZZES.video, ...QUIZZES.broadband];
+
+// ── STATE ─────────────────────────────────────
+let cat='', qs=[], idx=0, score=0, log=[], picked=-1;
+
+// ── UTILS ─────────────────────────────────────
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function goHome(){ show('landing'); }
+
+// ── START ─────────────────────────────────────
+function startQuiz(c){
+  cat=c;
+  qs=[...QUIZZES[c]];
+  for(let i=qs.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [qs[i],qs[j]]=[qs[j],qs[i]];
+  }
+  idx=0; score=0; log=[]; picked=-1;
+  const labels={video:'📺 Video / OTT', broadband:'📡 Broadband / CPE', all:'🎯 통합 퀴즈'};
+  document.getElementById('qz-badge').textContent=labels[c];
+  document.getElementById('qz-score').textContent='0';
+  show('quiz');
+  renderQ();
+}
+
+// ── RENDER ────────────────────────────────────
+function renderQ(){
+  picked=-1;
+  const q=qs[idx];
+  document.getElementById('qz-num').textContent=`Q${idx+1} / ${qs.length}`;
+  document.getElementById('qz-q').textContent=q.q;
+  document.getElementById('qz-tip').textContent='💡 '+q.tip;
+  document.getElementById('prog-fill').style.width=(idx/qs.length*100)+'%';
+
+  const labels=['A','B','C','D'];
+  document.getElementById('choices').innerHTML=q.choices.map((c,i)=>`
+    <button class="choice" onclick="pick(${i})" id="ch${i}">
+      <span class="ch-label" id="cl${i}">${labels[i]}</span>
+      <span>${c}</span>
+    </button>`).join('');
+
+  const fb=document.getElementById('qz-feedback');
+  fb.style.display='none'; fb.className='qz-feedback';
+  const nxt=document.getElementById('qz-next');
+  nxt.style.display='none';
+
+  // animate
+  const inner=document.getElementById('qz-inner');
+  inner.classList.remove('fade-in');
+  void inner.offsetWidth;
+  inner.classList.add('fade-in');
+}
+
+// ── PICK ──────────────────────────────────────
+function pick(i){
+  if(picked!==-1) return;
+  picked=i;
+  const q=qs[idx];
+  const ok=i===q.answer;
+  if(ok) score++;
+  document.getElementById('qz-score').textContent=score;
+
+  document.querySelectorAll('.choice').forEach(b=>b.setAttribute('disabled','true'));
+  document.getElementById('ch'+i).classList.add(ok?'correct-pick':'wrong-pick');
+  if(!ok) document.getElementById('ch'+q.answer).classList.add('show-correct');
+
+  const fb=document.getElementById('qz-feedback');
+  fb.className='qz-feedback '+(ok?'correct':'wrong');
+  fb.innerHTML=(ok?'✅ <strong>정답!</strong> ':'❌ <strong>오답.</strong> ')+q.explanation;
+  fb.style.display='block';
+
+  log.push({q:q.q, picked:q.choices[i], correct:q.choices[q.answer], ok});
+
+  const nxt=document.getElementById('qz-next');
+  nxt.style.display='block';
+  nxt.textContent=idx<qs.length-1?'다음 문제 →':'결과 보기 →';
+}
+
+// ── NEXT ──────────────────────────────────────
+function nextQ(){
+  idx++;
+  if(idx>=qs.length) showResult();
+  else renderQ();
+}
+
+// ── RESULT ────────────────────────────────────
+function showResult(){
+  const total=qs.length;
+  const pct=Math.round(score/total*100);
+  let emoji,title;
+  if(pct===100){emoji='🏆';title='완벽한 <span>KAON 입문 완료</span>!';}
+  else if(pct>=80){emoji='🎯';title='훌륭해요! <span>거의 다 알고 있네요</span>';}
+  else if(pct>=60){emoji='📖';title='절반 이상! <span>조금만 더 보충하면 돼요</span>';}
+  else{emoji='💪';title='다시 도전해서 <span>성장</span>해봐요!';}
+
+  document.getElementById('res-emoji').textContent=emoji;
+  document.getElementById('res-title').innerHTML=title;
+  document.getElementById('res-sub').textContent=`${total}문제 중 ${score}개 정답 (${pct}%)`;
+  document.getElementById('sc-big').textContent=score;
+  document.getElementById('sc-of').textContent='/ '+total;
+
+  document.getElementById('res-list').innerHTML=log.map(l=>`
+    <div class="res-item ${l.ok?'ok':'no'}">
+      <div class="res-mark">${l.ok?'✅':'❌'}</div>
+      <div>
+        <div class="res-q">${l.q.length>58?l.q.slice(0,58)+'…':l.q}</div>
+        <div class="res-pick">내 선택: ${l.picked}</div>
+        ${!l.ok?`<div class="res-ans">정답: ${l.correct}</div>`:''}
+      </div>
+    </div>`).join('');
+
+  show('result');
+}
+
+function retry(){ startQuiz(cat); }
+</script>
+</body>
+</html>
